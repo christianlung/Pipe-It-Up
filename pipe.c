@@ -8,17 +8,65 @@
 //route standard errors into file
 int main(int argc, char *argv[])
 {
-	if(argc==0) exit(EINVAL);
-	if(argc==1){
+	if(argc==1) exit(EINVAL);
+	if(argc==2){
 		execlp(argv[1],argv[1],NULL);
 		exit(1);
 	}
 
+	//start general (assume 2 commands)///////////
+	int ncommands = argc-1;
+	int status[ncommands];
+	int return_codes[ncommands];
+	int pipes[ncommands][2];
+
+	if(pipe(pipes[0])==-1) exit(1);
+	return_codes[0] = fork();
+	if(return_codes[0]<0) exit(1);
+	if(return_codes[0]==0){
+		if(dup2(pipes[0][1], STDOUT_FILENO)<0) exit(1);
+		close(pipes[0][1]);
+		close(pipes[0][0]);
+		execlp(argv[1],argv[1],NULL);
+	}
+	wait_pid(return_codes[0], status[0],0);
+	close(pipes[0][1]);
+
+	for(int process=1; process<ncommands-1; process++){
+		if(pipes[process]==-1) exit(1);
+		return_codes[process] = fork();
+		if(return_codes[process]<0) exit(1);
+		if(return_codes[process]==0){
+			if(dup2(pipes[process-1][0], STDIN_FILENO)<0) exit(1);
+			close(pipes[process-1][0]);
+			if(dup2(pipes[process][1], STDOUT_FILENO)<0) exit(1);
+			close(pipes[process][1]);
+			close(pipes[process][0]);
+			execlp(argv[process+1],argv[process+1],NULL);
+		}
+		waitpid(return_codes[process], status[process],0);
+		close(pipes[process-1][0]);
+		close(pipes[process][1]);
+	}
+
+	return_codes[ncommands-1] = fork();
+	if(return_codes[ncommands-1]<0) exit(1);
+	if(return_codes[ncommands-1]==0){
+		if(dup2(pipes[ncommands-1][0], STDIN_FILENO)<0) exit(1);
+		close(pipes[ncommands-1][0]); //CHECK THIS
+		execlp(argv[ncommands], argv[ncommands],NULL);
+	}
+	wait_pid(return_codes[ncommands-1],status[ncommands-1],0);
+	close(pipes[ncommands-1][0]);
+	//end general//////////////////////////////////
+
+
+	/*
 	int status1, status2, status3, status4 = 0;
 	int fd[2];
 	//fd[0] is the read end
 	//fd[1] is the write end
-	if(pipe(fd)==-1) return 1;
+	if(pipe(fd)==-1) exit(1);
 	int return_code1 = fork();
 	if(return_code1<0) exit(1);
 	if(return_code1 == 0){
@@ -33,7 +81,7 @@ int main(int argc, char *argv[])
 	// printf("Child process 1 exits with code: %d\n", WEXITSTATUS(status1));
 
 	int fd1[2];
-	if(pipe(fd1)==-1) return 1;
+	if(pipe(fd1)==-1) exit(1);
 	int return_code2 = fork();
 	if(return_code2<0) exit(1);
 	if(return_code2==0){
@@ -51,7 +99,7 @@ int main(int argc, char *argv[])
 	// printf("Child process 2 exits with code: %d\n", WEXITSTATUS(status2));
 
 	int fd2[2];
-	if(pipe(fd2)==-1) return 1;
+	if(pipe(fd2)==-1) exit(1);
 	int return_code3 = fork();
 	if(return_code3<0) exit(1);
 	if(return_code3==0){
@@ -78,5 +126,6 @@ int main(int argc, char *argv[])
 	close(fd2[0]);
 
 	waitpid(return_code4, &status4, 0);
+	*/
 	return 0;
 }
