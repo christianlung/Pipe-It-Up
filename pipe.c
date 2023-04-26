@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <errno.h>
 
-//route standard errors into file
 int main(int argc, char *argv[])
 {
 	if(argc==1) exit(EINVAL);
@@ -18,7 +17,7 @@ int main(int argc, char *argv[])
 	int ncommands = argc-1;
 	int status[ncommands];
 	int return_codes[ncommands];
-	int pipes[ncommands][2];
+	int pipes[ncommands-1][2];
 
 	if(pipe(pipes[0])==-1) exit(1);
 	return_codes[0] = fork();
@@ -29,11 +28,11 @@ int main(int argc, char *argv[])
 		close(pipes[0][0]);
 		execlp(argv[1],argv[1],NULL);
 	}
-	wait_pid(return_codes[0], status[0],0);
+	waitpid(return_codes[0], &status[0],0);
 	close(pipes[0][1]);
 
 	for(int process=1; process<ncommands-1; process++){
-		if(pipes[process]==-1) exit(1);
+		if(pipe(pipes[process])==-1) exit(1);
 		return_codes[process] = fork();
 		if(return_codes[process]<0) exit(1);
 		if(return_codes[process]==0){
@@ -44,7 +43,7 @@ int main(int argc, char *argv[])
 			close(pipes[process][0]);
 			execlp(argv[process+1],argv[process+1],NULL);
 		}
-		waitpid(return_codes[process], status[process],0);
+		waitpid(return_codes[process], &status[process],0);
 		close(pipes[process-1][0]);
 		close(pipes[process][1]);
 	}
@@ -52,12 +51,12 @@ int main(int argc, char *argv[])
 	return_codes[ncommands-1] = fork();
 	if(return_codes[ncommands-1]<0) exit(1);
 	if(return_codes[ncommands-1]==0){
-		if(dup2(pipes[ncommands-1][0], STDIN_FILENO)<0) exit(1);
-		close(pipes[ncommands-1][0]); //CHECK THIS
+		if(dup2(pipes[ncommands-2][0], STDIN_FILENO)<0) exit(1);
+		close(pipes[ncommands-2][0]);
 		execlp(argv[ncommands], argv[ncommands],NULL);
 	}
-	wait_pid(return_codes[ncommands-1],status[ncommands-1],0);
-	close(pipes[ncommands-1][0]);
+	waitpid(return_codes[ncommands-1],&status[ncommands-1],0);
+	close(pipes[ncommands-2][0]);
 	//end general//////////////////////////////////
 
 
