@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 		if(dup2(pipes[0][1], STDOUT_FILENO)<0) exit(1);
 		close(pipes[0][1]);
 		close(pipes[0][0]);
-		execlp(argv[1],argv[1],NULL);
+		if(execlp(argv[1],argv[1],NULL)==-1) exit(1);
 	}
 	waitpid(return_codes[0], &status[0],0);
 	close(pipes[0][1]);
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 			if(dup2(pipes[process][1], STDOUT_FILENO)<0) exit(1);
 			close(pipes[process][1]);
 			close(pipes[process][0]);
-			execlp(argv[process+1],argv[process+1],NULL);
+			if(execlp(argv[process+1],argv[process+1],NULL)==-1) exit(1);
 		}
 		waitpid(return_codes[process], &status[process],0);
 		close(pipes[process-1][0]);
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	if(return_codes[ncommands-1]==0){
 		if(dup2(pipes[ncommands-2][0], STDIN_FILENO)<0) exit(1);
 		close(pipes[ncommands-2][0]);
-		execlp(argv[ncommands], argv[ncommands],NULL);
+		if(execlp(argv[ncommands], argv[ncommands],NULL)==-1) exit(1);
 	}
 	waitpid(return_codes[ncommands-1],&status[ncommands-1],0);
 	close(pipes[ncommands-2][0]);
